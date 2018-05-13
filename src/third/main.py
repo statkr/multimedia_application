@@ -33,38 +33,44 @@ class StatModel(object):
     def save(self, fn):
         self.model.save(fn)
 
-    def drawPartition(self, img=None, colors=[(255, 0, 0), (0, 0, 255)]):
-        width = 200
-        height = 200
-        img = img if img is not None else np.zeros((width, height, 3), np.uint8)
+    def drawPoints(self, points, responses):
+        min, max = self.get_range(points)
+        h = 0.02
+        xx, yy = np.meshgrid(np.arange(min[0], max[0], h), np.arange(min[1], max[1], h))
+        X_hypo = np.c_[xx.ravel().astype(np.float32), yy.ravel().astype(np.float32)]
+        zz = self.predict(X_hypo)
+        zz = zz.reshape(xx.shape)
+        plt.contourf(xx, yy, zz, cmap=plt.cm.coolwarm, alpha=0.8)
+        plt.scatter(points[:, 0], points[:, 1], c=np.ravel(responses), s=30)
+        plt.show()
 
-        coordinates = np.array([[x, y] for x in range(width) for y in range(height)], dtype=np.float32)
-
-        predicts = self.predict(coordinates)
-        for x in range(width):
-            for y in range(height):
-                index = y * height + x
-                img[x][y] = colors[int(predicts[index])]
-        return img
-
-    def drawPoints(self, points, responses, img=None, colors=[(255, 0, 0), (0, 0, 255)]):
-        width = 200
-        height = 200
-        img = img if img is not None else np.zeros((width, height, 3), np.uint8)
-
-        for i in range(len(points)):
-            point = (int(points[i][0]), int(points[i][1]))
-            cv2.circle(img, point, 2, colors[int(responses[i])], -1)
-            cv2.circle(img, point, 3, (255, 255, 255), 0)
-        return img
+    def get_range(self, points):
+        max = np.amax(points, axis=0)
+        min = np.amin(points, axis=0)
+        return (min, max)
 
     def draw(self, img):
         plt.imshow(img)
         plt.gca().invert_yaxis()
         plt.show()
 
+    def read_file(self, filename):
+        fs_read = cv2.FileStorage(filename, cv2.FILE_STORAGE_READ)
+        features_train = fs_read.getNode('features_train').mat()
+        response_train = fs_read.getNode('response_train').mat()
+        features_test = fs_read.getNode('features_test').mat()
+        response_test = fs_read.getNode('response_test').mat()
+        fs_read.release()
+        return (features_train, response_train, features_test, response_test)
+
     def predict(self, values):
-        pass
+        result = self.model.predict(values)
+        return np.ravel(result[1])
+
+    def error(self, features, responses):
+        _responses = np.array(np.ravel(self.predict(features)), dtype=np.int)
+        responses = np.ravel(responses)
+        return np.sum(responses == _responses) / len(responses)
 
 
 class SVM(StatModel):
@@ -81,10 +87,6 @@ class SVM(StatModel):
         self.model.setGamma(2)
         return self.model.train(samples, ml.ROW_SAMPLE, responses)
 
-    def predict(self, values):
-        result = self.model.predict(values)
-        return np.reshape(result[1], len(result[1]))
-
 
 class DTrees(StatModel):
     '''wrapper for OpenCV SimpleVectorMachine algorithm'''
@@ -96,55 +98,44 @@ class DTrees(StatModel):
         # setting algorithm parameters
         return self.model.train(samples, ml.ROW_SAMPLE, responses)
 
-    def predict(self, values):
-        result = self.model.predict(values)
-        return np.reshape(result[1], len(result[1]))
-
 
 class RTrees(StatModel):
     '''wrapper for OpenCV SimpleVectorMachine algorithm'''
 
-    def __init__(self):
+    def __init__(self, n_trees=250, min_sample_count=2, max_depth=10):
         self.model = ml.RTrees_create()
+        eps = 1
+        criteria = (cv2.TERM_CRITERIA_MAX_ITER, n_trees, eps)
+        self.model.setTermCriteria(criteria)
+        self.model.setMinSampleCount(min_sample_count)
+        self.model.setMaxDepth(max_depth)
 
     def train(self, samples, responses):
         # setting algorithm parameters
-        n_trees = 250
+        self.model.setMaxCategories(len(np.unique(responses)))
+        return self.model.train(samples, ml.ROW_SAMPLE, responses)
+
+
+class GBTrees(StatModel):
+    '''wrapper for OpenCV SimpleVectorMachine algorithm'''
+
+    def __init__(self, n_trees=250, min_sample_count=2, max_depth=10):
+        self.model = ml.GbTrees_create()
         eps = 1
         criteria = (cv2.TERM_CRITERIA_MAX_ITER, n_trees, eps)
         self.model.setTermCriteria(criteria)
         self.model.setMaxCategories(len(np.unique(responses)))
-        self.model.setMinSampleCount(2)
-        self.model.setMaxDepth(10)
+        self.model.setMinSampleCount(min_sample_count)
+        self.model.setMaxDepth(max_depth)
+
+    def train(self, samples, responses):
+        # setting algorithm parameters
         return self.model.train(samples, ml.ROW_SAMPLE, responses)
 
-    def predict(self, values):
-        result = self.model.predict(values)
-        return np.reshape(result[1], len(result[1]))
-
-
-#
-samples = np.array([[40, 10], [40, 40], [20, 40], [20, 100]], dtype=np.float32)
-y_train = np.array([0, 0, 0, 1], dtype=np.int)
 clf = RTrees()
+features, responses, test_features, test_responses = clf.read_file("clusterization/datasetMulticlass.yml")
+clf.train(features, responses)
+y_val = clf.predict(features)
 
-clf.train(samples, y_train)
-y_val = clf.predict(samples)  # clf.save("file.dat")
-
-img = clf.drawPartition()
-img = clf.drawPoints(samples, y_val, img)
-clf.draw(img)
-
-# Generate data and labels
-# trainData =
-# trainLabels = np.array([0, 1, 0, 1], dtype=np.int)
-#
-# # Create SVM
-# svm = cv2.ml.SVM_create()
-# svm.setType(cv2.ml.SVM_C_SVC)
-# svm.setKernel(cv2.ml.SVM_RBF)
-# svm.setC(2)
-# svm.setGamma(2)
-#
-# # Train : error occurs here.
-# svm.train(trainData, cv2.ml.ROW_SAMPLE, trainLabels)
+print(clf.error(test_features, test_responses))
+img = clf.drawPoints(features, responses)
