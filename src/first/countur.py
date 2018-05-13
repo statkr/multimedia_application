@@ -4,7 +4,7 @@ import sys
 # video_capture = cv2.VideoCapture(0)
 # isGray = len(sys.argv) > 1 and sys.argv[1] == "gray"
 
-img = cv2.imread('opencv-logo.png')
+img = cv2.imread('logo.png')
 gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
 cv2.imwrite("opencv-logo-gray.png",gray)
