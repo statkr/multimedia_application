@@ -86,10 +86,47 @@ class SVM(StatModel):
         return np.reshape(result[1], len(result[1]))
 
 
+class DTrees(StatModel):
+    '''wrapper for OpenCV SimpleVectorMachine algorithm'''
+
+    def __init__(self):
+        self.model = ml.DTrees_create()
+
+    def train(self, samples, responses):
+        # setting algorithm parameters
+        return self.model.train(samples, ml.ROW_SAMPLE, responses)
+
+    def predict(self, values):
+        result = self.model.predict(values)
+        return np.reshape(result[1], len(result[1]))
+
+
+class RTrees(StatModel):
+    '''wrapper for OpenCV SimpleVectorMachine algorithm'''
+
+    def __init__(self):
+        self.model = ml.RTrees_create()
+
+    def train(self, samples, responses):
+        # setting algorithm parameters
+        n_trees = 250
+        eps = 1
+        criteria = (cv2.TERM_CRITERIA_MAX_ITER, n_trees, eps)
+        self.model.setTermCriteria(criteria)
+        self.model.setMaxCategories(len(np.unique(responses)))
+        self.model.setMinSampleCount(2)
+        self.model.setMaxDepth(10)
+        return self.model.train(samples, ml.ROW_SAMPLE, responses)
+
+    def predict(self, values):
+        result = self.model.predict(values)
+        return np.reshape(result[1], len(result[1]))
+
+
 #
-samples = np.array([[40, 10], [40, 40], [20, 40], [20, 20]], dtype=np.float32)
+samples = np.array([[40, 10], [40, 40], [20, 40], [20, 100]], dtype=np.float32)
 y_train = np.array([0, 0, 0, 1], dtype=np.int)
-clf = SVM()
+clf = RTrees()
 
 clf.train(samples, y_train)
 y_val = clf.predict(samples)  # clf.save("file.dat")
