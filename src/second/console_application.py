@@ -95,7 +95,7 @@ class Application:
         plt.xticks([]), plt.yticks([])
         plt.subplot(122), plt.imshow(self.output), plt.title('Modified')
         plt.xticks([]), plt.yticks([])
-        cv2.NamedWindow("w1", cv2.CV_WINDOW_AUTOSIZE)
+        plt.show()
 
     def applyOperation(self, index):
         if index == 1:
