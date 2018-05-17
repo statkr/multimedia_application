@@ -5,7 +5,9 @@ from matplotlib import pyplot as plt
 
 class Application:
     def __init__(self):
-        self.load_image("logo.png")
+        self.input = None
+        # self.load_image("logo.png")
+        pass
 
     def menu(self):
         print("0 - Read image")
@@ -38,17 +40,18 @@ class Application:
 
     def gaussian_blur(self):
         kernel_size = int(input("Write kernel size: "))
-        sigma = int(input("sigma: "))
+        sigma = float(input("sigma: "))
         self.output = cv2.GaussianBlur(self.input, (kernel_size, kernel_size), sigma)
 
     def median_blur(self):
+        #сортировка среднее
         kernel_size = int(input("Write kernel size: "))
         self.output = cv2.medianBlur(self.input, kernel_size)
 
     def erode(self):
         kernel_size = int(input("Write kernel size: "))
         iterations = int(input("Write iterations: "))
-        #если в окне все единицы то осталвяет, иначе удаляет
+        # если в окне все единицы то осталвяет, иначе удаляет
         kernel = np.ones((kernel_size, kernel_size), np.uint8)
         self.output = cv2.erode(self.input, kernel, iterations=iterations)
 
@@ -60,6 +63,7 @@ class Application:
         self.output = cv2.dilate(self.input, kernel, iterations=iterations)
 
     def sobel(self):
+        #производная по x, градиент
         sobelX = int(input("Write sobel X: "))
         sobelY = int(input("Write sobel Y: "))
         gray = cv2.cvtColor(self.input, cv2.COLOR_BGR2GRAY)
@@ -93,7 +97,7 @@ class Application:
             return
         plt.subplot(121), plt.imshow(self.input), plt.title('Original')
         plt.xticks([]), plt.yticks([])
-        plt.subplot(122), plt.imshow(self.output), plt.title('Modified')
+        plt.subplot(122), plt.imshow(self.output,cmap='gray'), plt.title('Modified')
         plt.xticks([]), plt.yticks([])
         plt.show()
 
@@ -129,15 +133,17 @@ class Application:
                 self.load_image(fileName)
                 print("Image read success")
             elif 1 <= index <= 11:
-                if not self.input:
+                if self.input is None:
                     print("Image not found, please read image first")
                 else:
-                    self.applyOperation(index)
-                    app.show()
+                    try:
+                        self.applyOperation(index)
+                        app.show()
+                    except:
+                        pass
             elif index == 12:
                 return
 
 
 app = Application()
-app.applyOperation(11)
-app.show()
+app.start()

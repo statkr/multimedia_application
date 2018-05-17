@@ -5,23 +5,103 @@ from matplotlib import pyplot as plt
 
 
 class Application:
+    def __init__(self):
+        self.features = None
+        self.responses = None
+        self.test_features = None
+        self.test_responses = None
+
     def menu(self):
-        print("0 - Read image")
-        print('1 - Apply linear filter')
-        print("2 - Apply blur(...)")
-        print("3 - Apply medianBlur(...)")
-        print("4 - Apply GaussianBlur(...)")
-        print("5 - Apply erode(...)")
-        print("6 - Apply dilate(...)")
-        print("7 - Apply Sobel(...)")
-        print("8 - Apply Laplacian(...)")
-        print("9 - Apply Canny(...)")
-        print("10 - Apply calcHist(...)")
-        print("11 - Apply equalizeHist(...)")
-        print("12 - exit")
+        print("Menu")
+        print("0 - Read file")
+        print("1 - Choose algorithm")
 
         menuIndex = int(input("Write index: "))
         return menuIndex
+
+    def start(self):
+
+        while True:
+            index = self.menu()
+            if (index == 0):
+                filename = input("Write filename: ")
+                self.read_file("clusterization/" + filename)
+            if (index == 1):
+                print("Choose algorithm")
+                print("1 - SVM")
+                print("2 - RTree")
+                print("3 - DTree")
+                alg = int(input("Number: "))
+                if (alg == 1):
+                    clf = self.createSVM()
+                elif alg == 3:
+                    clf = self.createDtree()
+                else:
+                    clf = self.createRtree()
+                clf.train(self.features_train, self.response_train)
+                print("Error train: %f" % clf.error(self.features_train, self.response_train))
+                print("Error test: %f" % clf.error(self.features_test, self.response_test))
+                try:
+                    clf.drawPoints(self.features_train, self.response_train)
+                except:
+                    pass
+
+    def createSVM(self):
+        print("Choose type:")
+        print("0 - C_SVC")
+        print("1 - NU_SVC")
+        print("2 - ONE_CLASS")
+        print("3 - EPS_SVR")
+        index = int(input("Write index [0]: "))
+        type = ml.SVM_C_SVC
+        if index == 1:
+            type = ml.SVM_NU_SVC
+        elif index == 2:
+            type = ml.SVM_ONE_CLASS
+        elif index == 3:
+            type = ml.SVM_EPS_SVR
+
+        print("Choose kernel:")
+        print("0 - LINEAR")
+        print("1 - POLY")
+        print("2 - RBF")
+        print("3 - SIGMOID")
+        index = int(input("Write index [0]: "))
+        kernel = ml.SVM_LINEAR
+        if index == 1:
+            kernel = ml.SVM_POLY
+        elif index == 2:
+            kernel = ml.SVM_RBF
+        elif index == 3:
+            kernel = ml.SIGMOID
+
+        c = float(input("Write C [1]: "))
+
+        gamma = float(input("Write gamma [2]: "))
+
+        nu = float(input("Write nu [0 --- 1]"))
+
+        degree = int(input("Write degree > 0 [1]: "))
+        return SVM(type, kernel, c, gamma, nu, degree)
+
+    def createRtree(self):
+        n_trees = int(input("Write n trees [25]: "))
+        min_sample_count = int(input("Write min sample count [10]: "))
+        max_depth = int(input("Write max depth [10]: "))
+        return RTrees(n_trees, min_sample_count, max_depth)
+
+    def createDtree(self):
+        min_sample_count = int(input("Write min sample count [10]: "))
+        max_depth = int(input("Write max depth [10]: "))
+        return DTrees(min_sample_count, max_depth)
+
+    def read_file(self, filename):
+        fs_read = cv2.FileStorage(filename, cv2.FILE_STORAGE_READ)
+        self.features_train = fs_read.getNode('features_train').mat()
+        self.response_train = fs_read.getNode('response_train').mat()
+        self.features_test = fs_read.getNode('features_test').mat()
+        self.response_test = fs_read.getNode('response_test').mat()
+        fs_read.release()
 
 
 class StatModel(object):
@@ -54,15 +134,6 @@ class StatModel(object):
         plt.gca().invert_yaxis()
         plt.show()
 
-    def read_file(self, filename):
-        fs_read = cv2.FileStorage(filename, cv2.FILE_STORAGE_READ)
-        features_train = fs_read.getNode('features_train').mat()
-        response_train = fs_read.getNode('response_train').mat()
-        features_test = fs_read.getNode('features_test').mat()
-        response_test = fs_read.getNode('response_test').mat()
-        fs_read.release()
-        return (features_train, response_train, features_test, response_test)
-
     def predict(self, values):
         result = self.model.predict(values)
         return np.ravel(result[1])
@@ -70,29 +141,36 @@ class StatModel(object):
     def error(self, features, responses):
         _responses = np.array(np.ravel(self.predict(features)), dtype=np.int)
         responses = np.ravel(responses)
-        return np.sum(responses == _responses) / len(responses)
+        return 1 - np.sum(responses == _responses) / len(responses)
 
 
 class SVM(StatModel):
     '''wrapper for OpenCV SimpleVectorMachine algorithm'''
 
-    def __init__(self):
+    def __init__(self, type=ml.SVM_C_SVC, kernel=ml.SVM_LINEAR, c=2., gamma=1., nu=0.5, degree=1):
         self.model = ml.SVM_create()
+        self.model.setType(type)
+        self.model.setKernel(kernel)
+        self.model.setC(c)
+        self.model.setGamma(gamma)
+        self.model.setNu(nu)
+        self.model.setDegree(degree)
 
     def train(self, samples, responses):
         # setting algorithm parameters
-        self.model.setType(ml.SVM_C_SVC)
-        self.model.setKernel(ml.SVM_LINEAR)
-        self.model.setC(2)
-        self.model.setGamma(2)
         return self.model.train(samples, ml.ROW_SAMPLE, responses)
 
 
 class DTrees(StatModel):
     '''wrapper for OpenCV SimpleVectorMachine algorithm'''
 
-    def __init__(self):
+    def __init__(self, min_sample_count=1, max_depth=10):
+        # self.model = cv2.DTrees_create()
         self.model = ml.DTrees_create()
+
+        self.model.setMinSampleCount(min_sample_count)
+        self.model.setCVFolds(1)
+        self.model.setMaxDepth(max_depth)
 
     def train(self, samples, responses):
         # setting algorithm parameters
@@ -102,7 +180,7 @@ class DTrees(StatModel):
 class RTrees(StatModel):
     '''wrapper for OpenCV SimpleVectorMachine algorithm'''
 
-    def __init__(self, n_trees=250, min_sample_count=2, max_depth=10):
+    def __init__(self, n_trees=10, min_sample_count=2, max_depth=10):
         self.model = ml.RTrees_create()
         eps = 1
         criteria = (cv2.TERM_CRITERIA_MAX_ITER, n_trees, eps)
@@ -120,22 +198,23 @@ class GBTrees(StatModel):
     '''wrapper for OpenCV SimpleVectorMachine algorithm'''
 
     def __init__(self, n_trees=250, min_sample_count=2, max_depth=10):
-        self.model = ml.GbTrees_create()
+        self.model = ml.GBTrees_create()
         eps = 1
         criteria = (cv2.TERM_CRITERIA_MAX_ITER, n_trees, eps)
         self.model.setTermCriteria(criteria)
-        self.model.setMaxCategories(len(np.unique(responses)))
         self.model.setMinSampleCount(min_sample_count)
         self.model.setMaxDepth(max_depth)
 
     def train(self, samples, responses):
         # setting algorithm parameters
+        self.model.setMaxCategories(len(np.unique(responses)))
         return self.model.train(samples, ml.ROW_SAMPLE, responses)
 
-clf = RTrees()
-features, responses, test_features, test_responses = clf.read_file("clusterization/datasetMulticlass.yml")
-clf.train(features, responses)
-y_val = clf.predict(features)
 
-print(clf.error(test_features, test_responses))
-img = clf.drawPoints(features, responses)
+app = Application()
+app.start()
+# app.read_file("clusterization/dataset2.yml")
+# dataset2 SVM(type=ml.SVM_ONE_CLASS, kernel=ml.SVM_RBF)
+# cvf = DTrees(max_depth=54)
+# cvf.train(app.features_train, app.response_train)
+# cvf.drawPoints(app.features_train, app.response_train)
