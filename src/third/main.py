@@ -49,6 +49,7 @@ class Application:
     def createSVM(self):
         print("Choose type:")
         print("0 - C_SVC")
+
         print("1 - NU_SVC")
         print("2 - ONE_CLASS")
         print("3 - EPS_SVR")
@@ -65,23 +66,29 @@ class Application:
         print("0 - LINEAR")
         print("1 - POLY")
         print("2 - RBF")
-        print("3 - SIGMOID")
+        #радиальная функция
         index = int(input("Write index [0]: "))
         kernel = ml.SVM_LINEAR
         if index == 1:
             kernel = ml.SVM_POLY
         elif index == 2:
             kernel = ml.SVM_RBF
-        elif index == 3:
-            kernel = ml.SIGMOID
 
-        c = float(input("Write C [1]: "))
+        c = 1
+        if (type in [ml.SVM_C_SVC, ml.SVM_EPS_SVR]):
+            c = float(input("Write C [1]: "))
+        # регулирующий величину штрафа за то, что некоторые точки выходят за границу разделяющей полосы
+        gamma = 2
+        if (kernel in [ml.SVM_POLY, ml.SVM_RBF]):
+            gamma = float(input("Write gamma [2]: "))
 
-        gamma = float(input("Write gamma [2]: "))
+        nu = 0.5
+        if (type in [ml.SVM_NU_SVC, ml.SVM_EPS_SVR, ml.SVM_ONE_CLASS]):
+            nu = float(input("Write nu [0 --- 1]: "))
 
-        nu = float(input("Write nu [0 --- 1]"))
-
-        degree = int(input("Write degree > 0 [1]: "))
+        degree = 1
+        if (kernel in [ml.SVM_POLY]):
+            degree = int(input("Write degree > 0 [1]: "))
         return SVM(type, kernel, c, gamma, nu, degree)
 
     def createRtree(self):
@@ -212,8 +219,8 @@ class GBTrees(StatModel):
 
 
 app = Application()
+app.read_file("clusterization/dataset3.yml")
 app.start()
-# app.read_file("clusterization/dataset2.yml")
 # dataset2 SVM(type=ml.SVM_ONE_CLASS, kernel=ml.SVM_RBF)
 # cvf = DTrees(max_depth=54)
 # cvf.train(app.features_train, app.response_train)

@@ -2,7 +2,7 @@ import numpy as np
 import cv2
 from matplotlib import pyplot as plt
 
-cluster_num = 3
+cluster_num = 6
 # define criteria and apply kmeans()
 criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
 
@@ -13,7 +13,7 @@ fs_read.release()
 
 ret, label, center = cv2.kmeans(Z, cluster_num, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
 
-colors = ["r", "g", "b"]
+colors = ["r", "g", "b", "y", "m", "c"]
 # Now separate the data, Note the flatten()
 for i in range(cluster_num):
     cluster = Z[label.ravel() == i]
