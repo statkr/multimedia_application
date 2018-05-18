@@ -44,7 +44,6 @@ class Application:
 
     def train_classifier(self, data, responses):
         n_trees = 200
-        min_sample_count = 2
         max_depth = 10
         model = cv2.ml.RTrees_create()
         eps = 1
@@ -87,9 +86,11 @@ def get_images_from_folder(folder):
 
 def start(folders, detector_type, voc_size, train_proportion):
     if detector_type == "SIFT":
+        # "Scale Invariant Feature Transform"
         extract = cv2.xfeatures2d.SIFT_create()
         detector = cv2.xfeatures2d.SIFT_create()
     else:
+        # "Speeded up Robust Features"
         extract = cv2.xfeatures2d.SURF_create()
         detector = cv2.xfeatures2d.SURF_create()
     flann_params = dict(algorithm=1, trees=5)
@@ -111,8 +112,17 @@ def start(folders, detector_type, voc_size, train_proportion):
     app = Application(extractor, detector)
     app.train(train, voc_size)
 
+    total_error = 0.0
+
     for id in range(len(test)):
-        print(app.error(test[id], id))
+        print(app.error(train[id], id))
+        test_error = app.error(test[id], id)
+        print(test_error)
+        print("---------")
+        total_error = total_error + test_error
+
+    total_error = total_error / float(len(test))
+    print("Total error = %f" % total_error)
 
 
 firstFolder = sys.argv[1]
